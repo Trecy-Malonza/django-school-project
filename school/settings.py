@@ -40,10 +40,10 @@ INSTALLED_APPS = [
     'student',
     'teacher',
     'classroom',
-    # 'schoolclass',
     'course',
     'rest_framework',
     'classperiod',
+    'timetable',
     
 ]
 

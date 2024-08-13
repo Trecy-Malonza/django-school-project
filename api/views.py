@@ -3,19 +3,44 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
+from classroom.models import ClassRoom
+from .serializers import ClassRoomSerializer
 from student.models import Student
 from .serializers import StudentSerializer
 from teacher.models import Teacher
 from .serializers import TeacherSerializer
-# Ensure ClassRoom model and serializer are properly defined
-# from .models import ClassRoom
-# from .serializers import ClassRoomSerializer
 from course.models import Course
 from .serializers import CourseSerializer
 from classperiod.models import ClassPeriod
 from .serializers import ClassPeriodSerializer
+from .serializers import TimetableSerializer
+from timetable.models import Timetable  
 
 # Create your views here.
+class TeacherAssignmentListView(APIView):
+    def post(self, request):
+        teacher_id = request.data.get("teacher_id")
+        course_id = request.data.get("course_id")
+        teacher = Teacher.objects.get(id=teacher_id)
+        course = Course.objects.get(id=course_id)
+        teacher.courses.add(course)
+        return Response({"status": "Course assigned to teacher"}, status=status.HTTP_202_ACCEPTED)
+
+class TeacherClassAssignmentListView(APIView):
+    def post(self, request):
+        teacher_id = request.data.get("teacher_id")
+        class_id = request.data.get("class_id")
+        teacher = Teacher.objects.get(id=teacher_id)
+        classroom = ClassRoom.objects.get(id=class_id)
+        teacher.classrooms.add(classroom)
+        return Response({"status": "Class assigned to teacher"}, status=status.HTTP_202_ACCEPTED)
+
+class WeeklyTimetableListView(APIView):
+    def get(self, request):
+        timetable = Timetable.objects.all()
+        serializer = TimetableSerializer(timetable, many=True)  
+        return Response(serializer.data)
+
 class StudentListView(APIView):
     def get(self, request):
         students = Student.objects.all()
@@ -89,6 +114,9 @@ class ClassRoomListView(APIView):
 class TeacherListView(APIView):
     def get(self, request):
         teachers = Teacher.objects.all()
+        first_name = request.query_params.get("first_name")
+        if first_name:
+            students =students.filter(first_name=first_name)
         serializer = TeacherSerializer(teachers, many=True)
         return Response(serializer.data)
     
@@ -119,13 +147,30 @@ class TeacherDetailView(APIView):
     def delete(self, request, id):
         teacher = Teacher.objects.get(id=id)
         teacher.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)  # Changed status to HTTP_204_NO_CONTENT
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def post(self,request,id):
+        teacher= Teacher.objects.get(id=id)
+        action =request.data.get("action")
+        if action=="enroll":
+            course_id=request.data.get("course_id")
+            self.enroll_teacher(teacher,course_id)
+            return Response(status=status.HTTP_202_ACCEPTED)
+
+    def enroll_teacher(self,teacher,course_id):
+        course= Course.objects.get(id=course_id)
+        teacher.courses.add(course)
     
 class CourseListView(APIView):
     def get(self, request):
         courses = Course.objects.all()
+        course_name=request.query_params.get("course_name")
+        if course_name:
+            students =students.filter(first_name=course_name)
         serializer = CourseSerializer(courses, many=True)
         return Response(serializer.data)
+    
+    
     
     def post(self, request):
         serializer = CourseSerializer(data=request.data)
@@ -153,11 +198,28 @@ class CourseDetailView(APIView):
     def delete(self, request, id):
         course = Course.objects.get(id=id)
         course.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)  # Changed status to HTTP_204_NO_CONTENT
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+    def post(self,request,id):
+        course=Course.objects.get(id=id)
+        action=request.data.get("action")
+        if action=="enroll":
+            student_id=request.data.get("student_id")
+            self.enroll_student(course,student_id)
+            return Response(status=status.HTTP_202_ACCEPTED)
+        
+    def enroll_student(self,student,course_id):
+        course= Course.objects.get(id=course_id)
+        student.courses.add(course)
+        
+            
+ 
 
 class ClassPeriodListView(APIView):
     def get(self, request):
         classperiods = ClassPeriod.objects.all()
+        
         serializer = ClassPeriodSerializer(classperiods, many=True)
         return Response(serializer.data)
     
